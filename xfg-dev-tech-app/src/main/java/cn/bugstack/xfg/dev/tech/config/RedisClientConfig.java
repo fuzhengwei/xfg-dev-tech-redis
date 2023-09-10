@@ -16,7 +16,7 @@ import org.springframework.context.annotation.Configuration;
 /**
  * @author Fuzhengwei bugstack.cn @小傅哥
  * @description Redis 客户端，使用 Redisson <a href="https://github.com/redisson/redisson">Redisson</a>
- * @create 2023-09-03 16:51
+ * @create 2023-09-09 16:51
  */
 @Configuration
 @EnableConfigurationProperties(RedisClientConfigProperties.class)
@@ -40,19 +40,21 @@ public class RedisClientConfig {
                 .setPingConnectionInterval(properties.getPingInterval())
                 .setKeepAlive(properties.isKeepAlive())
         ;
+
         RedissonClient redissonClient = Redisson.create(config);
 
-        // 添加监听
         String[] beanNamesForType = applicationContext.getBeanNamesForType(MessageListener.class);
         for (String beanName : beanNamesForType) {
             MessageListener bean = applicationContext.getBean(beanName, MessageListener.class);
-            Class<?> beanClass = bean.getClass();
+
+            Class<? extends MessageListener> beanClass = bean.getClass();
+
             if (beanClass.isAnnotationPresent(RedisTopic.class)) {
                 RedisTopic redisTopic = beanClass.getAnnotation(RedisTopic.class);
+
                 RTopic topic = redissonClient.getTopic(redisTopic.topic());
                 topic.addListener(String.class, bean);
 
-                // 动态创建 bean 对象，注入到 spring 容器，bean 的名称为 redisTopic，对象为 RTopic
                 ConfigurableListableBeanFactory beanFactory = applicationContext.getBeanFactory();
                 beanFactory.registerSingleton(redisTopic.topic(), topic);
             }
